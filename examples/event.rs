@@ -16,7 +16,7 @@ fn main() -> Result<(), JsValue> {
     client.set_on_error(Some(Box::new(|error| {
         error!("{:#?}", error);
     })));
-    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient, e| {
+    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
         info!("{:#?}", client.status);
         info!("Sending message...");
         client.send_string("Hello, World!").unwrap();

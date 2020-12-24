@@ -1,12 +1,12 @@
 //! This crate offers 2 (wasm-only) websocket clients.
 //! The first client offered is the [`EventClient`]. This client is event based and gives you the most control.
 //! ```
+//! use console_error_panic_hook;
+//! use console_log;
 //! use log::{error, info, Level};
+//! use std::panic;
 //! use wasm_bindgen::JsValue;
 //! use wasm_sockets;
-//! use console_log;
-//! use console_error_panic_hook;
-//! use std::panic;
 //!
 //! fn main() -> Result<(), JsValue> {
 //!     panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -19,7 +19,7 @@
 //!     client.set_on_error(Some(Box::new(|error| {
 //!         error!("{:#?}", error);
 //!     })));
-//!     client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient, e| {
+//!     client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
 //!         info!("{:#?}", client.status);
 //!         info!("Sending message...");
 //!         client.send_string("Hello, World!").unwrap();
@@ -137,7 +137,7 @@ impl PollingClient {
         let status = Rc::new(RefCell::new(ConnectionStatus::Connecting));
         let status_ref = status.clone();
 
-        client.set_on_connection(Some(Box::new(move |_client, _e| {
+        client.set_on_connection(Some(Box::new(move |_client| {
             *status_ref.borrow_mut() = ConnectionStatus::Connected;
         })));
 
@@ -205,7 +205,7 @@ pub struct EventClient {
     /// The function bound to the on_error event
     pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent) -> ()>>>>,
     /// The function bound to the on_connection event
-    pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>>,
+    pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient) -> ()>>>>,
     /// The function bound to the on_message event
     pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>>,
     /// The function bound to the on_close event
@@ -253,7 +253,7 @@ impl EventClient {
         ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
         onclose_callback.forget();
 
-        let on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>> =
+        let on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient) -> ()>>>> =
             Rc::new(RefCell::new(None));
         let on_connection_ref = on_connection.clone();
 
@@ -276,10 +276,10 @@ impl EventClient {
         }));
         let client_ref = client.clone();
 
-        let onopen_callback = Closure::wrap(Box::new(move |v| {
+        let onopen_callback = Closure::wrap(Box::new(move |_| {
             *ref_status.borrow_mut() = ConnectionStatus::Connected;
             if let Some(f) = &*on_connection_ref.borrow() {
-                f.as_ref()(&*client_ref.clone().borrow(), v);
+                f.as_ref()(&*client_ref.clone().borrow());
             }
         }) as Box<dyn FnMut(JsValue)>);
         connection
@@ -360,11 +360,11 @@ impl EventClient {
     /// This will overwrite the previous handler.
     /// You can set [None](std::option) to disable the on_connection handler.
     /// ```
-    /// client.set_on_connection(Some(Box::new(|c, v| {
-    ///     info!("Connected: {:#?}", e);
+    /// client.set_on_connection(Some(Box::new(|client| {
+    ///     info!("Connected");
     /// })));
     /// ```
-    pub fn set_on_connection(&mut self, f: Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>) {
+    pub fn set_on_connection(&mut self, f: Option<Box<dyn Fn(&EventClient) -> ()>>) {
         *self.on_connection.borrow_mut() = f;
     }
     /// Set an on_message event handler.
