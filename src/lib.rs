@@ -78,26 +78,26 @@ pub fn start_websocket() -> Result<(), JsValue> {
 
     Ok(())
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ConnectionStatus {
     Connecting,
     Connected,
     Error(ErrorEvent),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Text(String),
     Binary(Vec<u8>),
 }
 pub struct BlockingClient {
     pub url: String,
-    pub connection: Rc<RefCell<web_sys::WebSocket>>,
+    pub event_client: EventClient,
     pub status: Rc<RefCell<ConnectionStatus>>,
-    pub data: Rc<RefCell<Vec<String>>>,
+    pub data: Rc<RefCell<Vec<Message>>>,
 }
 // TODO: Replace unwraps and JsValue with custom error type
 impl BlockingClient {
-    pub fn connect_with_url(url: &str) -> Result<Self, JsValue> {
+    pub fn new(url: &str) -> Result<Self, JsValue> {
         // Create connection
         let mut client = EventClient::new(url)?;
         let data = Rc::new(RefCell::new(vec![]));
@@ -115,12 +115,32 @@ impl BlockingClient {
             *status_ref.borrow_mut() = ConnectionStatus::Error(e);
         })));
 
+        client.set_on_message(Some(Box::new(move |c: &EventClient, m: Message| {
+            data_ref.borrow_mut().push(m);
+        })));
+
         Ok(Self {
             url: url.to_string(),
-            connection: client.connection,
+            event_client: client,
             status,
             data,
         })
+    }
+    pub fn receive(&mut self) -> Vec<Message> {
+        let data = (*self.data.borrow()).clone();
+        (*self.data.borrow_mut()).clear();
+        data
+    }
+    pub fn status(&self) -> ConnectionStatus {
+        self.status.borrow().clone()
+    }
+
+    pub fn send_string(&self, message: &str) -> Result<(), JsValue> {
+        self.event_client.send_string(message)
+    }
+
+    pub fn send_binary(&self, message: Vec<u8>) -> Result<(), JsValue> {
+        self.event_client.send_binary(message)
     }
 }
 pub struct EventClient {
@@ -257,12 +277,12 @@ impl EventClient {
     }
 
     pub fn send_string(&self, message: &str) -> Result<(), JsValue> {
-        self.connection.borrow_mut().send_with_str(message)
+        self.connection.borrow().send_with_str(message)
     }
 
     pub fn send_binary(&self, message: Vec<u8>) -> Result<(), JsValue> {
         self.connection
-            .borrow_mut()
+            .borrow()
             .send_with_u8_array(message.as_slice())
     }
 }
