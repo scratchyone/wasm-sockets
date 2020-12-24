@@ -85,10 +85,9 @@
 //! }
 //! ```
 
-use log::{debug, error, info, trace, warn, Level};
+use log::trace;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, Condvar, Mutex};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
@@ -138,7 +137,7 @@ impl PollingClient {
         let status = Rc::new(RefCell::new(ConnectionStatus::Connecting));
         let status_ref = status.clone();
 
-        client.set_on_connection(Some(Box::new(move |c, e| {
+        client.set_on_connection(Some(Box::new(move |_client, _e| {
             *status_ref.borrow_mut() = ConnectionStatus::Connected;
         })));
 
@@ -154,7 +153,7 @@ impl PollingClient {
             *status_ref.borrow_mut() = ConnectionStatus::Disconnected;
         })));
 
-        client.set_on_message(Some(Box::new(move |c: &EventClient, m: Message| {
+        client.set_on_message(Some(Box::new(move |_client: &EventClient, m: Message| {
             data_ref.borrow_mut().push(m);
         })));
 
@@ -265,7 +264,6 @@ impl EventClient {
         let ref_status = status.clone();
 
         let connection = Rc::new(RefCell::new(ws));
-        let connection_ref = connection.clone();
 
         let client = Rc::new(RefCell::new(Self {
             url: Rc::new(RefCell::new(url.to_string())),
@@ -290,7 +288,6 @@ impl EventClient {
         onopen_callback.forget();
 
         let client_ref = client.clone();
-        let client_ref2 = client.clone();
 
         let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
             // Process different types of message data
