@@ -128,8 +128,8 @@ pub struct EventClient {
     pub connection: Rc<RefCell<web_sys::WebSocket>>,
     pub status: Rc<RefCell<ConnectionStatus>>,
     pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent) -> ()>>>>,
-    pub on_connection: Rc<RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, JsValue) -> ()>>>>,
-    pub on_message: Rc<RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, Message) -> ()>>>>,
+    pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>>,
+    pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>>,
 }
 impl EventClient {
     pub fn new(url: &str) -> Result<Self, JsValue> {
@@ -154,12 +154,11 @@ impl EventClient {
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
 
-        let on_connection: Rc<
-            RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, JsValue) -> ()>>>,
-        > = Rc::new(RefCell::new(None));
+        let on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>> =
+            Rc::new(RefCell::new(None));
         let on_connection_ref = on_connection.clone();
 
-        let on_message: Rc<RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, Message) -> ()>>>> =
+        let on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>> =
             Rc::new(RefCell::new(None));
         let on_message_ref = on_message.clone();
 
@@ -181,7 +180,7 @@ impl EventClient {
         let onopen_callback = Closure::wrap(Box::new(move |v| {
             *ref_status.borrow_mut() = ConnectionStatus::Connected;
             if let Some(f) = &*on_connection_ref.borrow() {
-                f.as_ref()(client_ref.clone(), v);
+                f.as_ref()(&*client_ref.clone().borrow(), v);
             }
         }) as Box<dyn FnMut(JsValue)>);
         connection
@@ -200,7 +199,7 @@ impl EventClient {
                 // Convert arraybuffer to vec
                 let array = js_sys::Uint8Array::new(&abuf).to_vec();
                 if let Some(f) = &*on_message_ref.borrow() {
-                    f.as_ref()(client_ref.clone(), Message::Binary(array));
+                    f.as_ref()(&*client_ref.clone().borrow(), Message::Binary(array));
                 }
             } else if let Ok(blob) = e.data().dyn_into::<web_sys::Blob>() {
                 // Received blob data
@@ -213,7 +212,7 @@ impl EventClient {
                 let onloadend_cb = Closure::wrap(Box::new(move |_e: web_sys::ProgressEvent| {
                     let array = js_sys::Uint8Array::new(&fr_c.result().unwrap()).to_vec();
                     if let Some(f) = &*cbref.borrow() {
-                        f.as_ref()(cbfref.clone(), Message::Binary(array));
+                        f.as_ref()(&*cbfref.clone().borrow(), Message::Binary(array));
                     }
                 })
                     as Box<dyn FnMut(web_sys::ProgressEvent)>);
@@ -222,7 +221,7 @@ impl EventClient {
                 onloadend_cb.forget();
             } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
                 if let Some(f) = &*on_message_ref.borrow() {
-                    f.as_ref()(client_ref.clone(), Message::Text(txt.into()));
+                    f.as_ref()(&*client_ref.clone().borrow(), Message::Text(txt.into()));
                 }
             } else {
                 // Got unknown data
@@ -249,17 +248,11 @@ impl EventClient {
     pub fn set_on_error(&mut self, f: Option<Box<dyn Fn(ErrorEvent) -> ()>>) {
         *self.on_error.borrow_mut() = f;
     }
-    pub fn set_on_connection(
-        &mut self,
-        f: Option<Box<dyn Fn(Rc<RefCell<EventClient>>, JsValue) -> ()>>,
-    ) {
+    pub fn set_on_connection(&mut self, f: Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>) {
         *self.on_connection.borrow_mut() = f;
     }
 
-    pub fn set_on_message(
-        &mut self,
-        f: Option<Box<dyn Fn(Rc<RefCell<EventClient>>, Message) -> ()>>,
-    ) {
+    pub fn set_on_message(&mut self, f: Option<Box<dyn Fn(&EventClient, Message) -> ()>>) {
         *self.on_message.borrow_mut() = f;
     }
 

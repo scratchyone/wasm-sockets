@@ -15,18 +15,16 @@ fn main() -> Result<(), JsValue> {
     client.set_on_error(Some(Box::new(|e| {
         error!("{:#?}", e);
     })));
-    client.set_on_connection(Some(Box::new(
-        |c: Rc<RefCell<wasm_sockets::EventClient>>, e| {
-            info!("Connected: {:#?}", e);
-            info!("{:#?}", &c.borrow_mut().status);
-            info!("Sending message...");
-            c.borrow().send_string("test...").unwrap();
-            c.borrow().send_binary(vec![20]).unwrap();
-        },
-    )));
+    client.set_on_connection(Some(Box::new(|c: &wasm_sockets::EventClient, e| {
+        info!("Connected: {:#?}", e);
+        info!("{:#?}", c.status);
+        info!("Sending message...");
+        c.send_string("test...").unwrap();
+        c.send_binary(vec![20]).unwrap();
+    })));
 
     client.set_on_message(Some(Box::new(
-        |c: Rc<RefCell<wasm_sockets::EventClient>>, e: wasm_sockets::Message| {
+        |c: &wasm_sockets::EventClient, e: wasm_sockets::Message| {
             info!("New Message: {:#?}", e);
         },
     )));
