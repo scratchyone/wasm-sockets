@@ -1,11 +1,10 @@
 use console_error_panic_hook;
-use log::{debug, error, info, trace, warn, Level};
+use log::{info, Level};
 use std::cell::RefCell;
 use std::panic;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures;
-use wasm_sockets::{self, ConnectionStatus};
+use wasm_sockets::{self};
 
 fn main() -> Result<(), JsValue> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
