@@ -84,10 +84,10 @@ pub enum ConnectionStatus {
     Connected,
     Error(ErrorEvent),
 }
-
 #[derive(Debug)]
 pub enum Message {
     Text(String),
+    Binary(Vec<u8>),
 }
 pub struct BlockingClient {
     pub url: String,
@@ -129,6 +129,7 @@ pub struct EventClient {
     pub status: Rc<RefCell<ConnectionStatus>>,
     pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent) -> ()>>>>,
     pub on_connection: Rc<RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, JsValue) -> ()>>>>,
+    pub on_message: Rc<RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, Message) -> ()>>>>,
 }
 impl EventClient {
     pub fn new(url: &str) -> Result<Self, JsValue> {
@@ -158,23 +159,29 @@ impl EventClient {
         > = Rc::new(RefCell::new(None));
         let on_connection_ref = on_connection.clone();
 
+        let on_message: Rc<RefCell<Option<Box<dyn Fn(Rc<RefCell<EventClient>>, Message) -> ()>>>> =
+            Rc::new(RefCell::new(None));
+        let on_message_ref = on_message.clone();
+
         let ref_status = status.clone();
 
         let connection = Rc::new(RefCell::new(ws));
         let connection_ref = connection.clone();
 
-        let test = Rc::new(RefCell::new(Self {
+        let client = Rc::new(RefCell::new(Self {
             url: Rc::new(RefCell::new(url.to_string())),
             connection: connection.clone(),
             on_error: on_error.clone(),
             on_connection: on_connection.clone(),
             status: status.clone(),
+            on_message: on_message.clone(),
         }));
+        let client_ref = client.clone();
 
         let onopen_callback = Closure::wrap(Box::new(move |v| {
             *ref_status.borrow_mut() = ConnectionStatus::Connected;
             if let Some(f) = &*on_connection_ref.borrow() {
-                f.as_ref()(test.clone(), v);
+                f.as_ref()(client_ref.clone(), v);
             }
         }) as Box<dyn FnMut(JsValue)>);
         connection
@@ -182,11 +189,59 @@ impl EventClient {
             .set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
         onopen_callback.forget();
 
+        let client_ref = client.clone();
+        let client_ref2 = client.clone();
+
+        let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
+            // Process different types of message data
+            if let Ok(abuf) = e.data().dyn_into::<js_sys::ArrayBuffer>() {
+                // Received arraybuffer
+                trace!("message event, received arraybuffer: {:?}", abuf);
+                // Convert arraybuffer to vec
+                let array = js_sys::Uint8Array::new(&abuf).to_vec();
+                if let Some(f) = &*on_message_ref.borrow() {
+                    f.as_ref()(client_ref.clone(), Message::Binary(array));
+                }
+            } else if let Ok(blob) = e.data().dyn_into::<web_sys::Blob>() {
+                // Received blob data
+                trace!("message event, received blob: {:?}", blob);
+                let fr = web_sys::FileReader::new().unwrap();
+                let fr_c = fr.clone();
+                // create onLoadEnd callback
+                let cbref = on_message_ref.clone();
+                let cbfref = client_ref.clone();
+                let onloadend_cb = Closure::wrap(Box::new(move |_e: web_sys::ProgressEvent| {
+                    let array = js_sys::Uint8Array::new(&fr_c.result().unwrap()).to_vec();
+                    if let Some(f) = &*cbref.borrow() {
+                        f.as_ref()(cbfref.clone(), Message::Binary(array));
+                    }
+                })
+                    as Box<dyn FnMut(web_sys::ProgressEvent)>);
+                fr.set_onloadend(Some(onloadend_cb.as_ref().unchecked_ref()));
+                fr.read_as_array_buffer(&blob).expect("blob not readable");
+                onloadend_cb.forget();
+            } else if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
+                if let Some(f) = &*on_message_ref.borrow() {
+                    f.as_ref()(client_ref.clone(), Message::Text(txt.into()));
+                }
+            } else {
+                // Got unknown data
+                panic!("Unknown data: {:#?}", e.data());
+            }
+        }) as Box<dyn FnMut(MessageEvent)>);
+        // set message event handler on WebSocket
+        connection
+            .borrow()
+            .set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+        // forget the callback to keep it alive
+        onmessage_callback.forget();
+
         Ok(Self {
             url: Rc::new(RefCell::new(url.to_string())),
             connection,
             on_error,
             on_connection,
+            on_message,
             status: status,
         })
     }
@@ -201,7 +256,20 @@ impl EventClient {
         *self.on_connection.borrow_mut() = f;
     }
 
+    pub fn set_on_message(
+        &mut self,
+        f: Option<Box<dyn Fn(Rc<RefCell<EventClient>>, Message) -> ()>>,
+    ) {
+        *self.on_message.borrow_mut() = f;
+    }
+
     pub fn send_string(&self, message: &str) -> Result<(), JsValue> {
         self.connection.borrow_mut().send_with_str(message)
+    }
+
+    pub fn send_binary(&self, message: Vec<u8>) -> Result<(), JsValue> {
+        self.connection
+            .borrow_mut()
+            .send_with_u8_array(message.as_slice())
     }
 }

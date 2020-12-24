@@ -11,7 +11,7 @@ fn main() -> Result<(), JsValue> {
     console_log::init_with_level(Level::Trace).expect("Failed to enable logging");
     info!("Creating connection");
 
-    let mut client = wasm_sockets::EventClient::new("ws://localhost:9001")?;
+    let mut client = wasm_sockets::EventClient::new("wss://echo.websocket.org")?;
     client.set_on_error(Some(Box::new(|e| {
         error!("{:#?}", e);
     })));
@@ -21,6 +21,13 @@ fn main() -> Result<(), JsValue> {
             info!("{:#?}", &c.borrow_mut().status);
             info!("Sending message...");
             c.borrow().send_string("test...").unwrap();
+            c.borrow().send_binary(vec![20]).unwrap();
+        },
+    )));
+
+    client.set_on_message(Some(Box::new(
+        |c: Rc<RefCell<wasm_sockets::EventClient>>, e: wasm_sockets::Message| {
+            info!("New Message: {:#?}", e);
         },
     )));
 
