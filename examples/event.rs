@@ -22,7 +22,9 @@ fn main() -> Result<(), JsValue> {
         c.send_string("test...").unwrap();
         c.send_binary(vec![20]).unwrap();
     })));
-
+    client.set_on_close(Some(Box::new(|| {
+        info!("Closed");
+    })));
     client.set_on_message(Some(Box::new(
         |c: &wasm_sockets::EventClient, e: wasm_sockets::Message| {
             info!("New Message: {:#?}", e);

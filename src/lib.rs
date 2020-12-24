@@ -14,6 +14,8 @@ pub enum ConnectionStatus {
     Connected,
     /// Disconnected from a server due to an error
     Error(ErrorEvent),
+    /// Disconnected from a server without an error
+    Disconnected,
 }
 
 /// Message is a representation of a websocket message that can be sent or recieved
@@ -57,6 +59,12 @@ impl PollingClient {
 
         client.set_on_error(Some(Box::new(move |e| {
             *status_ref.borrow_mut() = ConnectionStatus::Error(e);
+        })));
+
+        let status_ref = status.clone();
+
+        client.set_on_close(Some(Box::new(move || {
+            *status_ref.borrow_mut() = ConnectionStatus::Disconnected;
         })));
 
         client.set_on_message(Some(Box::new(move |c: &EventClient, m: Message| {
@@ -114,6 +122,8 @@ pub struct EventClient {
     pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>>,
     /// The function bound to the on_message event
     pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>>,
+    /// The function bound to the on_close event
+    pub on_close: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>>,
 }
 impl EventClient {
     /// Create a new EventClient and connect to a WebSocket URL
@@ -144,6 +154,19 @@ impl EventClient {
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
 
+        let on_close: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>> = Rc::new(RefCell::new(None));
+        let on_close_ref = on_close.clone();
+        let ref_status = status.clone();
+
+        let onclose_callback = Closure::wrap(Box::new(move || {
+            *ref_status.borrow_mut() = ConnectionStatus::Disconnected;
+            if let Some(f) = &*on_close_ref.borrow() {
+                f.as_ref()();
+            }
+        }) as Box<dyn FnMut()>);
+        ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
+        onclose_callback.forget();
+
         let on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>> =
             Rc::new(RefCell::new(None));
         let on_connection_ref = on_connection.clone();
@@ -164,6 +187,7 @@ impl EventClient {
             on_connection: on_connection.clone(),
             status: status.clone(),
             on_message: on_message.clone(),
+            on_close: on_close.clone(),
         }));
         let client_ref = client.clone();
 
@@ -231,6 +255,7 @@ impl EventClient {
             on_error,
             on_connection,
             on_message,
+            on_close,
             status: status,
         })
     }
@@ -271,6 +296,18 @@ impl EventClient {
     /// ```
     pub fn set_on_message(&mut self, f: Option<Box<dyn Fn(&EventClient, Message) -> ()>>) {
         *self.on_message.borrow_mut() = f;
+    }
+    /// Set an on_close event handler.
+    /// This handler will be run when the client disconnects from a server without an error.
+    /// This will overwrite the previous handler.
+    /// You can set [None](std::option) to disable the on_close handler.
+    /// ```
+    /// client.set_on_close(Some(Box::new(|| {
+    ///     info!("Closed");
+    /// })));
+    /// ```
+    pub fn set_on_close(&mut self, f: Option<Box<dyn Fn() -> ()>>) {
+        *self.on_close.borrow_mut() = f;
     }
 
     /// Send a text message to the server

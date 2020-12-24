@@ -19,6 +19,7 @@ fn main() -> Result<(), JsValue> {
 
     let f = Closure::wrap(Box::new(move || {
         info!("{:#?}", client.borrow_mut().receive());
+        info!("{:#?}", client.borrow().status());
     }) as Box<dyn FnMut()>);
     setInterval(&f, 100); // Create non-blocking loop
     f.forget();
