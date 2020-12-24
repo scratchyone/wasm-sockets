@@ -8,23 +8,39 @@ use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConnectionStatus {
+    /// Connecting to a server
     Connecting,
+    /// Connected to a server
     Connected,
+    /// Disconnected from a server due to an error
     Error(ErrorEvent),
 }
+
+/// Message is a representation of a websocket message that can be sent or recieved
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// A text message
     Text(String),
+    /// A binary message
     Binary(Vec<u8>),
 }
 pub struct PollingClient {
+    /// The URL this client is connected to
     pub url: String,
+    /// The core [`EventClient`] this client is using
     pub event_client: EventClient,
+    /// The current connection status
     pub status: Rc<RefCell<ConnectionStatus>>,
-    pub data: Rc<RefCell<Vec<Message>>>,
+    data: Rc<RefCell<Vec<Message>>>,
 }
 // TODO: Replace unwraps and JsValue with custom error type
 impl PollingClient {
+    /// Create a new PollingClient and connect to a WebSocket URL
+    ///
+    /// Note: An Ok() from this function does not mean the connection has succeeded.
+    /// ```
+    /// PollingClient::new("wss://echo.websocket.org")?;
+    /// ```
     pub fn new(url: &str) -> Result<Self, JsValue> {
         // Create connection
         let mut client = EventClient::new(url)?;
@@ -54,32 +70,58 @@ impl PollingClient {
             data,
         })
     }
+    /// Get all new WebSocket messages that were received since this function was last called
+    /// ```
+    /// println!("New messages: {:#?}", client.receive());
+    /// ```
     pub fn receive(&mut self) -> Vec<Message> {
         let data = (*self.data.borrow()).clone();
         (*self.data.borrow_mut()).clear();
         data
     }
+    /// Get the client's current connection status
+    /// ```
+    /// println!("Current status: {:#?}", client.status());
+    /// ```
     pub fn status(&self) -> ConnectionStatus {
         self.status.borrow().clone()
     }
-
+    /// Send a text message to the server
+    /// ```
+    /// client.send_string("Hello server!")?;
+    /// ```
     pub fn send_string(&self, message: &str) -> Result<(), JsValue> {
         self.event_client.send_string(message)
     }
-
+    /// Send a binary message to the server
+    /// ```
+    /// client.send_binary(vec![0x2, 0xF])?;
+    /// ```
     pub fn send_binary(&self, message: Vec<u8>) -> Result<(), JsValue> {
         self.event_client.send_binary(message)
     }
 }
 pub struct EventClient {
+    /// The URL this client is connected to
     pub url: Rc<RefCell<String>>,
+    /// The raw web_sys WebSocket object this client is using
     pub connection: Rc<RefCell<web_sys::WebSocket>>,
+    /// The current connection status
     pub status: Rc<RefCell<ConnectionStatus>>,
+    /// The function bound to the on_error event
     pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent) -> ()>>>>,
+    /// The function bound to the on_connection event
     pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>>>,
+    /// The function bound to the on_message event
     pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>>,
 }
 impl EventClient {
+    /// Create a new EventClient and connect to a WebSocket URL
+    ///
+    /// Note: An Ok() from this function does not mean the connection has succeeded.
+    /// ```
+    /// EventClient::new("wss://echo.websocket.org")?;
+    /// ```
     pub fn new(url: &str) -> Result<Self, JsValue> {
         // Create connection
         let ws: web_sys::WebSocket = WebSocket::new(url)?;
@@ -192,22 +234,56 @@ impl EventClient {
             status: status,
         })
     }
-
+    /// Set an on_error event handler.
+    /// This handler will be run when the client disconnects from the server due to an error.
+    /// This will overwrite the previous handler.
+    /// You can set [None](std::option) to disable the on_error handler.
+    /// ```
+    /// client.set_on_error(Some(Box::new(|error| {
+    ///    panic!("Error: {:#?}", error);
+    /// })));
+    /// ```
     pub fn set_on_error(&mut self, f: Option<Box<dyn Fn(ErrorEvent) -> ()>>) {
         *self.on_error.borrow_mut() = f;
     }
+    /// Set an on_connection event handler.
+    /// This handler will be run when the client successfully connects to a server.
+    /// This will overwrite the previous handler.
+    /// You can set [None](std::option) to disable the on_connection handler.
+    /// ```
+    /// client.set_on_connection(Some(Box::new(|c, v| {
+    ///     info!("Connected: {:#?}", e);
+    /// })));
+    /// ```
     pub fn set_on_connection(&mut self, f: Option<Box<dyn Fn(&EventClient, JsValue) -> ()>>) {
         *self.on_connection.borrow_mut() = f;
     }
-
+    /// Set an on_message event handler.
+    /// This handler will be run when the client receives a message from a server.
+    /// This will overwrite the previous handler.
+    /// You can set [None](std::option) to disable the on_message handler.
+    /// ```
+    /// client.set_on_message(Some(Box::new(
+    ///     |c, m| {
+    ///         info!("New Message: {:#?}", m);
+    ///     },
+    ///  )));
+    /// ```
     pub fn set_on_message(&mut self, f: Option<Box<dyn Fn(&EventClient, Message) -> ()>>) {
         *self.on_message.borrow_mut() = f;
     }
 
+    /// Send a text message to the server
+    /// ```
+    /// client.send_string("Hello server!")?;
+    /// ```
     pub fn send_string(&self, message: &str) -> Result<(), JsValue> {
         self.connection.borrow().send_with_str(message)
     }
-
+    /// Send a binary message to the server
+    /// ```
+    /// client.send_binary(vec![0x2, 0xF])?;
+    /// ```
     pub fn send_binary(&self, message: Vec<u8>) -> Result<(), JsValue> {
         self.connection
             .borrow()
