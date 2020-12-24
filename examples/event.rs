@@ -1,9 +1,9 @@
+use console_error_panic_hook;
 use console_log;
 use log::{error, info, Level};
+use std::panic;
 use wasm_bindgen::JsValue;
 use wasm_sockets;
-use console_error_panic_hook;
-use std::panic;
 
 fn main() -> Result<(), JsValue> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));

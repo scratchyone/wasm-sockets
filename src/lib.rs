@@ -5,8 +5,11 @@
 //! use wasm_bindgen::JsValue;
 //! use wasm_sockets;
 //! use console_log;
+//! use console_error_panic_hook;
+//! use std::panic;
 //!
 //! fn main() -> Result<(), JsValue> {
+//!     panic::set_hook(Box::new(console_error_panic_hook::hook));
 //!     // console_log and log macros are used instead of println!
 //!     // so that messages can be seen in the browser console
 //!     console_log::init_with_level(Level::Trace).expect("Failed to enable logging");
@@ -39,14 +42,16 @@
 //! This client is also much simpler than the [`EventClient`]. However, you can access the main [`EventClient`] that it is using
 //! if you want access to lower level control.
 //! ```
+//! use console_error_panic_hook;
 //! use log::{info, Level};
 //! use std::cell::RefCell;
 //! use std::panic;
 //! use std::rc::Rc;
 //! use wasm_bindgen::prelude::*;
-//! use wasm_sockets::{self};
+//! use wasm_sockets::{self, ConnectionStatus};
 //!
 //! fn main() -> Result<(), JsValue> {
+//!     panic::set_hook(Box::new(console_error_panic_hook::hook));
 //!     // console_log and log macros are used instead of println!
 //!     // so that messages can be seen in the browser console
 //!     console_log::init_with_level(Level::Trace).expect("Failed to enable logging");
@@ -59,6 +64,10 @@
 //!     )?));
 //!
 //!     let f = Closure::wrap(Box::new(move || {
+//!         if client.borrow().status() == ConnectionStatus::Connected {
+//!             info!("Sending message");
+//!             client.borrow().send_string("Hello, World!").unwrap();
+//!         }
 //!         // receive() gives you all new websocket messages since receive() was last called
 //!         info!("New messages: {:#?}", client.borrow_mut().receive());
 //!     }) as Box<dyn FnMut()>);
