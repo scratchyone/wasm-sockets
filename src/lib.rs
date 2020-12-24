@@ -89,14 +89,14 @@ pub enum Message {
     Text(String),
     Binary(Vec<u8>),
 }
-pub struct BlockingClient {
+pub struct PollingClient {
     pub url: String,
     pub event_client: EventClient,
     pub status: Rc<RefCell<ConnectionStatus>>,
     pub data: Rc<RefCell<Vec<Message>>>,
 }
 // TODO: Replace unwraps and JsValue with custom error type
-impl BlockingClient {
+impl PollingClient {
     pub fn new(url: &str) -> Result<Self, JsValue> {
         // Create connection
         let mut client = EventClient::new(url)?;

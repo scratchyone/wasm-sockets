@@ -13,7 +13,7 @@ fn main() -> Result<(), JsValue> {
     info!("Creating connection");
 
     // Client is wrapped in an Rc<RefCell<>> so it can be used within setInterval
-    let client = Rc::new(RefCell::new(wasm_sockets::BlockingClient::new(
+    let client = Rc::new(RefCell::new(wasm_sockets::PollingClient::new(
         "wss://echo.websocket.org",
     )?));
 
