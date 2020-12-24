@@ -3,10 +3,11 @@ use log::{info, Level};
 use std::cell::RefCell;
 use std::panic;
 use std::rc::Rc;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use wasm_sockets::{self, ConnectionStatus};
+use wasm_sockets::{self, ConnectionStatus, WebSocketError};
 
-fn main() -> Result<(), JsValue> {
+fn main() -> Result<(), WebSocketError> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
     // console_log and log macros are used instead of println!
     // so that messages can be seen in the browser console

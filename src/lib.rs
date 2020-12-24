@@ -5,10 +5,9 @@
 //! use console_log;
 //! use log::{error, info, Level};
 //! use std::panic;
-//! use wasm_bindgen::JsValue;
-//! use wasm_sockets;
+//! use wasm_sockets::{self, WebSocketError};
 //!
-//! fn main() -> Result<(), JsValue> {
+//! fn main() -> Result<(), WebSocketError> {
 //!     panic::set_hook(Box::new(console_error_panic_hook::hook));
 //!     // console_log and log macros are used instead of println!
 //!     // so that messages can be seen in the browser console
@@ -47,10 +46,11 @@
 //! use std::cell::RefCell;
 //! use std::panic;
 //! use std::rc::Rc;
+//! #[cfg(target_arch = "wasm32")]
 //! use wasm_bindgen::prelude::*;
-//! use wasm_sockets::{self, ConnectionStatus};
+//! use wasm_sockets::{self, ConnectionStatus, WebSocketError};
 //!
-//! fn main() -> Result<(), JsValue> {
+//! fn main() -> Result<(), WebSocketError> {
 //!     panic::set_hook(Box::new(console_error_panic_hook::hook));
 //!     // console_log and log macros are used instead of println!
 //!     // so that messages can be seen in the browser console
@@ -84,11 +84,15 @@
 //!     fn setInterval(closure: &Closure<dyn FnMut()>, time: u32) -> i32;
 //! }
 //! ```
-
+#[cfg(test)]
+mod tests;
 use log::trace;
 use std::cell::RefCell;
 use std::rc::Rc;
+use thiserror::Error;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
@@ -129,7 +133,7 @@ impl PollingClient {
     /// ```
     /// PollingClient::new("wss://echo.websocket.org")?;
     /// ```
-    pub fn new(url: &str) -> Result<Self, JsValue> {
+    pub fn new(url: &str) -> Result<Self, WebSocketError> {
         // Create connection
         let mut client = EventClient::new(url)?;
         let data = Rc::new(RefCell::new(vec![]));
@@ -195,11 +199,20 @@ impl PollingClient {
         self.event_client.send_binary(message)
     }
 }
+
+#[derive(Debug, Clone, Error)]
+pub enum WebSocketError {
+    #[error("Failed to create websocket connection: {0}")]
+    ConnectionCreationError(String),
+}
+
+#[cfg(target_arch = "wasm32")]
 pub struct EventClient {
     /// The URL this client is connected to
     pub url: Rc<RefCell<String>>,
-    /// The raw web_sys WebSocket object this client is using
-    pub connection: Rc<RefCell<web_sys::WebSocket>>,
+    /// The raw web_sys WebSocket object this client is using.
+    /// Be careful when using this field, as it will be a different type depending on the compilation target.
+    connection: Rc<RefCell<web_sys::WebSocket>>,
     /// The current connection status
     pub status: Rc<RefCell<ConnectionStatus>>,
     /// The function bound to the on_error event
@@ -211,6 +224,8 @@ pub struct EventClient {
     /// The function bound to the on_close event
     pub on_close: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>>,
 }
+
+#[cfg(target_arch = "wasm32")]
 impl EventClient {
     /// Create a new EventClient and connect to a WebSocket URL
     ///
@@ -218,9 +233,14 @@ impl EventClient {
     /// ```
     /// EventClient::new("wss://echo.websocket.org")?;
     /// ```
-    pub fn new(url: &str) -> Result<Self, JsValue> {
+    pub fn new(url: &str) -> Result<Self, WebSocketError> {
         // Create connection
-        let ws: web_sys::WebSocket = WebSocket::new(url)?;
+        let ws: web_sys::WebSocket = match WebSocket::new(url) {
+            Ok(ws) => ws,
+            Err(e) => Err(WebSocketError::ConnectionCreationError(
+                e.as_string().unwrap(),
+            ))?,
+        };
         // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
