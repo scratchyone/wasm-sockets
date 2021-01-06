@@ -5,7 +5,7 @@
 This crate offers 2 (wasm-only) websocket clients.
 The first client offered is the `EventClient`. This client is event based and gives you the most control.
 
-```rs
+```rust
 use console_error_panic_hook;
 use console_log;
 use log::{error, info, Level};
@@ -47,7 +47,7 @@ The second client offered is the `PollingClient`. This client is ideal for games
 This client is also much simpler than the `EventClient`. However, you can access the main `EventClient` that it is using
 if you want access to lower level control.
 
-```rs
+```rust
 use console_error_panic_hook;
 use log::{info, Level};
 use std::cell::RefCell;
