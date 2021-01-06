@@ -96,6 +96,9 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
+#[cfg(not(target_arch = "wasm32"))]
+compile_error!("wasm-sockets can only compile to WASM targets");
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConnectionStatus {
     /// Connecting to a server
@@ -116,6 +119,7 @@ pub enum Message {
     /// A binary message
     Binary(Vec<u8>),
 }
+#[cfg(target_arch = "wasm32")]
 pub struct PollingClient {
     /// The URL this client is connected to
     pub url: String,
@@ -125,6 +129,7 @@ pub struct PollingClient {
     pub status: Rc<RefCell<ConnectionStatus>>,
     data: Rc<RefCell<Vec<Message>>>,
 }
+#[cfg(target_arch = "wasm32")]
 // TODO: Replace unwraps and JsValue with custom error type
 impl PollingClient {
     /// Create a new PollingClient and connect to a WebSocket URL
