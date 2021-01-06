@@ -15,9 +15,6 @@ readme = "Readme.md"
 log = "0.4.11"
 thiserror = "1.0.22"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio-tungstenite = "0.12.0"
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
 js-sys = "0.3"
