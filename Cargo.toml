@@ -3,6 +3,11 @@ name = "wasm-sockets"
 version = "0.1.0"
 authors = ["scratchyone <scratchywon@gmail.com>"]
 edition = "2018"
+license = "MIT"
+categories = ["game-development", "network-programming", "wasm", "web-programming::websocket"]
+description = "A WASM-only websocket library"
+repository = "https://github.com/scratchyone/wasm-sockets"
+readme = "Readme.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
