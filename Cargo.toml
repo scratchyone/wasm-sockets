@@ -1,6 +1,6 @@
 [package]
 name = "wasm-sockets"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["scratchyone <scratchywon@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -8,6 +8,10 @@ categories = ["game-development", "network-programming", "wasm", "web-programmin
 description = "A WASM-only websocket library"
 repository = "https://github.com/scratchyone/wasm-sockets"
 readme = "Readme.md"
+
+[package.metadata.docs.rs]
+targets = ["wasm32-unknown-unknown"]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
