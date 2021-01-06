@@ -86,7 +86,7 @@
 //! ```
 #[cfg(test)]
 mod tests;
-use log::trace;
+use log::{error, trace};
 use std::cell::RefCell;
 use std::rc::Rc;
 use thiserror::Error;
@@ -103,7 +103,7 @@ pub enum ConnectionStatus {
     /// Connected to a server
     Connected,
     /// Disconnected from a server due to an error
-    Error(ErrorEvent),
+    Error,
     /// Disconnected from a server without an error
     Disconnected,
 }
@@ -148,7 +148,7 @@ impl PollingClient {
         let status_ref = status.clone();
 
         client.set_on_error(Some(Box::new(move |e| {
-            *status_ref.borrow_mut() = ConnectionStatus::Error(e);
+            *status_ref.borrow_mut() = ConnectionStatus::Error;
         })));
 
         let status_ref = status.clone();
@@ -238,7 +238,7 @@ impl EventClient {
         let ws: web_sys::WebSocket = match WebSocket::new(url) {
             Ok(ws) => ws,
             Err(e) => Err(WebSocketError::ConnectionCreationError(
-                e.as_string().unwrap(),
+                "Failed to connect".into(),
             ))?,
         };
         // For small binary messages, like CBOR, Arraybuffer is more efficient than Blob handling
@@ -252,7 +252,7 @@ impl EventClient {
         let on_error_ref = on_error.clone();
 
         let onerror_callback = Closure::wrap(Box::new(move |e: ErrorEvent| {
-            *ref_status.borrow_mut() = ConnectionStatus::Error(e.clone());
+            *ref_status.borrow_mut() = ConnectionStatus::Error;
             if let Some(f) = &*on_error_ref.borrow() {
                 f.as_ref()(e);
             }
