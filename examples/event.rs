@@ -11,7 +11,7 @@ fn main() -> Result<(), WebSocketError> {
     console_log::init_with_level(Level::Trace).expect("Failed to enable logging");
     info!("Creating connection");
 
-    let mut client = wasm_sockets::EventClient::new("wss://echo.websocket.org")?;
+    let mut client = wasm_sockets::EventClient::new("wss://ws.ifelse.io")?;
     client.set_on_error(Some(Box::new(|error| {
         error!("{:#?}", error);
     })));

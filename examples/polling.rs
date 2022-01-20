@@ -17,7 +17,7 @@ fn main() -> Result<(), WebSocketError> {
     // Client is wrapped in an Rc<RefCell<>> so it can be used within setInterval
     // This isn't required when being used within a game engine
     let client = Rc::new(RefCell::new(wasm_sockets::PollingClient::new(
-        "wss://echo.websocket.org",
+        "wss://ws.ifelse.io",
     )?));
 
     let f = Closure::wrap(Box::new(move || {

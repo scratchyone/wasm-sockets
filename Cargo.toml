@@ -4,10 +4,18 @@ version = "0.2.1"
 authors = ["scratchyone <scratchywon@gmail.com>"]
 edition = "2018"
 license = "MIT"
-categories = ["game-development", "network-programming", "wasm", "web-programming::websocket"]
+categories = [
+  "game-development",
+  "network-programming",
+  "wasm",
+  "web-programming::websocket",
+]
 description = "A WASM-only websocket library"
 repository = "https://github.com/scratchyone/wasm-sockets"
 readme = "Readme.md"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [package.metadata.docs.rs]
 targets = ["wasm32-unknown-unknown"]
@@ -37,6 +45,4 @@ console_log = "0.2.0"
 console_error_panic_hook = "0.1.6"
 wasm-bindgen-futures = "0.4.19"
 wasm-bindgen-test = "0.3"
-web-sys = { version = "0.3.22", features = [
-  "Window",
-] }
+web-sys = { version = "0.3.22", features = ["Window"] }
