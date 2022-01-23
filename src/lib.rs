@@ -261,7 +261,7 @@ impl EventClient {
             if let Some(f) = &*on_error_ref.borrow() {
                 f.as_ref()(e);
             }
-        }) as Box<dyn FnMut(ErrorEvent)>);
+        }) as Box<dyn Fn(ErrorEvent)>);
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
 
@@ -274,7 +274,7 @@ impl EventClient {
             if let Some(f) = &*on_close_ref.borrow() {
                 f.as_ref()();
             }
-        }) as Box<dyn FnMut()>);
+        }) as Box<dyn Fn()>);
         ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
         onclose_callback.forget();
 
@@ -306,7 +306,7 @@ impl EventClient {
             if let Some(f) = &*on_connection_ref.borrow() {
                 f.as_ref()(&*client_ref.clone().borrow());
             }
-        }) as Box<dyn FnMut(JsValue)>);
+        }) as Box<dyn Fn(JsValue)>);
         connection
             .borrow_mut()
             .set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
@@ -338,7 +338,7 @@ impl EventClient {
                         f.as_ref()(&*cbfref.clone().borrow(), Message::Binary(array));
                     }
                 })
-                    as Box<dyn FnMut(web_sys::ProgressEvent)>);
+                    as Box<dyn Fn(web_sys::ProgressEvent)>);
                 fr.set_onloadend(Some(onloadend_cb.as_ref().unchecked_ref()));
                 fr.read_as_array_buffer(&blob).expect("blob not readable");
                 onloadend_cb.forget();
@@ -350,7 +350,7 @@ impl EventClient {
                 // Got unknown data
                 panic!("Unknown data: {:#?}", e.data());
             }
-        }) as Box<dyn FnMut(MessageEvent)>);
+        }) as Box<dyn Fn(MessageEvent)>);
         // set message event handler on WebSocket
         connection
             .borrow()
