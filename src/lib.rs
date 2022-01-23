@@ -70,7 +70,7 @@
 //!         }
 //!         // receive() gives you all new websocket messages since receive() was last called
 //!         info!("New messages: {:#?}", client.borrow_mut().receive());
-//!     }) as Box<dyn FnMut()>);
+//!     }) as Box<dyn Fn()>);
 //!
 //!     // Start non-blocking game loop
 //!     setInterval(&f, 100);
@@ -81,7 +81,7 @@
 //! // Bind setInterval to make a basic game loop
 //! #[wasm_bindgen]
 //! extern "C" {
-//!     fn setInterval(closure: &Closure<dyn FnMut()>, time: u32) -> i32;
+//!     fn setInterval(closure: &Closure<dyn Fn()>, time: u32) -> i32;
 //! }
 //! ```
 #[cfg(test)]
