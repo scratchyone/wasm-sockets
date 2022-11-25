@@ -1,6 +1,6 @@
 [package]
 name = "wasm-sockets"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["scratchyone <scratchywon@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -14,11 +14,11 @@ description = "A WASM-only websocket library"
 repository = "https://github.com/scratchyone/wasm-sockets"
 readme = "Readme.md"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [package.metadata.docs.rs]
 targets = ["wasm32-unknown-unknown"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
