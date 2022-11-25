@@ -24,7 +24,7 @@
 //!         client.send_string("Hello, World!").unwrap();
 //!         client.send_binary(vec![20]).unwrap();
 //!     })));
-//!     client.set_on_close(Some(Box::new(|| {
+//!     client.set_on_close(Some(Box::new(|_evt| {
 //!         info!("Connection closed");
 //!     })));
 //!     client.set_on_message(Some(Box::new(
@@ -202,6 +202,24 @@ impl PollingClient {
     /// ```
     pub fn send_binary(&self, message: Vec<u8>) -> Result<(), JsValue> {
         self.event_client.send_binary(message)
+    }
+
+    /// Close the connection
+    /// ```
+    /// client.close()?;
+    /// ```
+    pub fn close(&self) -> Result<(), JsValue> {
+        self.event_client.close()
+    }
+    /// Close the connection with a custom close code and, optionally, a reason string
+    ///
+    /// The reason string must be at most 123 bytes long.
+    ///
+    /// ```
+    /// client.close_with(1001, Some("going away"))?;
+    /// ```
+    pub fn close_with(&self, code: u16, reason: Option<&str>) -> Result<(), JsValue> {
+        self.event_client.close_with(code, reason)
     }
 }
 
@@ -412,7 +430,7 @@ impl EventClient {
     /// This will overwrite the previous handler.
     /// You can set [None](std::option) to disable the on_close handler.
     /// ```
-    /// client.set_on_close(Some(Box::new(|| {
+    /// client.set_on_close(Some(Box::new(|_evt| {
     ///     info!("Closed");
     /// })));
     /// ```
@@ -435,5 +453,29 @@ impl EventClient {
         self.connection
             .borrow()
             .send_with_u8_array(message.as_slice())
+    }
+
+    /// Close the connection
+    /// ```
+    /// client.close()?;
+    /// ```
+    pub fn close(&self) -> Result<(), JsValue> {
+        self.connection.borrow().close()
+    }
+    /// Close the connection with a custom close code and, optionally, a reason string
+    ///
+    /// The reason string must be at most 123 bytes long.
+    ///
+    /// ```
+    /// client.close_with(1001, Some("going away"))?;
+    /// ```
+    pub fn close_with(&self, code: u16, reason: Option<&str>) -> Result<(), JsValue> {
+        match reason {
+            Some(reason) => self
+                .connection
+                .borrow()
+                .close_with_code_and_reason(code, reason),
+            None => self.connection.borrow().close_with_code(code),
+        }
     }
 }
