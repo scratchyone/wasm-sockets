@@ -24,7 +24,7 @@
 //!         client.send_string("Hello, World!").unwrap();
 //!         client.send_binary(vec![20]).unwrap();
 //!     })));
-//!     client.set_on_close(Some(Box::new(|| {
+//!     client.set_on_close(Some(Box::new(|_evt| {
 //!         info!("Connection closed");
 //!     })));
 //!     client.set_on_message(Some(Box::new(
@@ -94,7 +94,7 @@ use thiserror::Error;
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
-use web_sys::{ErrorEvent, MessageEvent, WebSocket};
+use web_sys::{CloseEvent, ErrorEvent, MessageEvent, WebSocket};
 
 #[cfg(not(target_arch = "wasm32"))]
 compile_error!("wasm-sockets can only compile to WASM targets");
@@ -158,7 +158,7 @@ impl PollingClient {
 
         let status_ref = status.clone();
 
-        client.set_on_close(Some(Box::new(move || {
+        client.set_on_close(Some(Box::new(move |_evt| {
             *status_ref.borrow_mut() = ConnectionStatus::Disconnected;
         })));
 
@@ -245,7 +245,7 @@ pub struct EventClient {
     /// The function bound to the on_message event
     pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>>,
     /// The function bound to the on_close event
-    pub on_close: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>>,
+    pub on_close: Rc<RefCell<Option<Box<dyn Fn(CloseEvent) -> ()>>>>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -283,16 +283,17 @@ impl EventClient {
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
 
-        let on_close: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>> = Rc::new(RefCell::new(None));
+        let on_close: Rc<RefCell<Option<Box<dyn Fn(CloseEvent) -> ()>>>> =
+            Rc::new(RefCell::new(None));
         let on_close_ref = on_close.clone();
         let ref_status = status.clone();
 
-        let onclose_callback = Closure::wrap(Box::new(move || {
+        let onclose_callback = Closure::wrap(Box::new(move |e: CloseEvent| {
             *ref_status.borrow_mut() = ConnectionStatus::Disconnected;
             if let Some(f) = &*on_close_ref.borrow() {
-                f.as_ref()();
+                f.as_ref()(e);
             }
-        }) as Box<dyn Fn()>);
+        }) as Box<dyn Fn(CloseEvent)>);
         ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
         onclose_callback.forget();
 
@@ -429,11 +430,11 @@ impl EventClient {
     /// This will overwrite the previous handler.
     /// You can set [None](std::option) to disable the on_close handler.
     /// ```
-    /// client.set_on_close(Some(Box::new(|| {
+    /// client.set_on_close(Some(Box::new(|_evt| {
     ///     info!("Closed");
     /// })));
     /// ```
-    pub fn set_on_close(&mut self, f: Option<Box<dyn Fn() -> ()>>) {
+    pub fn set_on_close(&mut self, f: Option<Box<dyn Fn(CloseEvent) -> ()>>) {
         *self.on_close.borrow_mut() = f;
     }
 

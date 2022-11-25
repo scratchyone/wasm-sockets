@@ -29,7 +29,7 @@ fn main() -> Result<(), WebSocketError> {
         client.send_string("Hello, World!").unwrap();
         client.send_binary(vec![20]).unwrap();
     })));
-    client.set_on_close(Some(Box::new(|| {
+    client.set_on_close(Some(Box::new(|_evt| {
         info!("Connection closed");
     })));
     client.set_on_message(Some(Box::new(
