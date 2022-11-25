@@ -152,7 +152,7 @@ impl PollingClient {
 
         let status_ref = status.clone();
 
-        client.set_on_error(Some(Box::new(move |e| {
+        client.set_on_error(Some(Box::new(move |_e| {
             *status_ref.borrow_mut() = ConnectionStatus::Error;
         })));
 
@@ -239,13 +239,13 @@ pub struct EventClient {
     /// The current connection status
     pub status: Rc<RefCell<ConnectionStatus>>,
     /// The function bound to the on_error event
-    pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent) -> ()>>>>,
+    pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent)>>>>,
     /// The function bound to the on_connection event
-    pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient) -> ()>>>>,
+    pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient)>>>>,
     /// The function bound to the on_message event
-    pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>>,
+    pub on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message)>>>>,
     /// The function bound to the on_close event
-    pub on_close: Rc<RefCell<Option<Box<dyn Fn(CloseEvent) -> ()>>>>,
+    pub on_close: Rc<RefCell<Option<Box<dyn Fn(CloseEvent)>>>>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -260,7 +260,7 @@ impl EventClient {
         // Create connection
         let ws: web_sys::WebSocket = match WebSocket::new(url) {
             Ok(ws) => ws,
-            Err(e) => Err(WebSocketError::ConnectionCreationError(
+            Err(_e) => Err(WebSocketError::ConnectionCreationError(
                 "Failed to connect".into(),
             ))?,
         };
@@ -270,8 +270,7 @@ impl EventClient {
         let status = Rc::new(RefCell::new(ConnectionStatus::Connecting));
         let ref_status = status.clone();
 
-        let on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent) -> ()>>>> =
-            Rc::new(RefCell::new(None));
+        let on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent)>>>> = Rc::new(RefCell::new(None));
         let on_error_ref = on_error.clone();
 
         let onerror_callback = Closure::wrap(Box::new(move |e: ErrorEvent| {
@@ -283,8 +282,7 @@ impl EventClient {
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
 
-        let on_close: Rc<RefCell<Option<Box<dyn Fn(CloseEvent) -> ()>>>> =
-            Rc::new(RefCell::new(None));
+        let on_close: Rc<RefCell<Option<Box<dyn Fn(CloseEvent)>>>> = Rc::new(RefCell::new(None));
         let on_close_ref = on_close.clone();
         let ref_status = status.clone();
 
@@ -297,11 +295,11 @@ impl EventClient {
         ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
         onclose_callback.forget();
 
-        let on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient) -> ()>>>> =
+        let on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient)>>>> =
             Rc::new(RefCell::new(None));
         let on_connection_ref = on_connection.clone();
 
-        let on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message) -> ()>>>> =
+        let on_message: Rc<RefCell<Option<Box<dyn Fn(&EventClient, Message)>>>> =
             Rc::new(RefCell::new(None));
         let on_message_ref = on_message.clone();
 
@@ -331,7 +329,7 @@ impl EventClient {
             .set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
         onopen_callback.forget();
 
-        let client_ref = client.clone();
+        let client_ref = client;
 
         let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
             // Process different types of message data
@@ -384,7 +382,7 @@ impl EventClient {
             on_connection,
             on_message,
             on_close,
-            status: status,
+            status,
         })
     }
     /// Set an on_error event handler.
@@ -396,7 +394,7 @@ impl EventClient {
     ///    panic!("Error: {:#?}", error);
     /// })));
     /// ```
-    pub fn set_on_error(&mut self, f: Option<Box<dyn Fn(ErrorEvent) -> ()>>) {
+    pub fn set_on_error(&mut self, f: Option<Box<dyn Fn(ErrorEvent)>>) {
         *self.on_error.borrow_mut() = f;
     }
     /// Set an on_connection event handler.
@@ -408,7 +406,7 @@ impl EventClient {
     ///     info!("Connected");
     /// })));
     /// ```
-    pub fn set_on_connection(&mut self, f: Option<Box<dyn Fn(&EventClient) -> ()>>) {
+    pub fn set_on_connection(&mut self, f: Option<Box<dyn Fn(&EventClient)>>) {
         *self.on_connection.borrow_mut() = f;
     }
     /// Set an on_message event handler.
@@ -422,7 +420,7 @@ impl EventClient {
     ///     },
     ///  )));
     /// ```
-    pub fn set_on_message(&mut self, f: Option<Box<dyn Fn(&EventClient, Message) -> ()>>) {
+    pub fn set_on_message(&mut self, f: Option<Box<dyn Fn(&EventClient, Message)>>) {
         *self.on_message.borrow_mut() = f;
     }
     /// Set an on_close event handler.
@@ -434,7 +432,7 @@ impl EventClient {
     ///     info!("Closed");
     /// })));
     /// ```
-    pub fn set_on_close(&mut self, f: Option<Box<dyn Fn(CloseEvent) -> ()>>) {
+    pub fn set_on_close(&mut self, f: Option<Box<dyn Fn(CloseEvent)>>) {
         *self.on_close.borrow_mut() = f;
     }
 

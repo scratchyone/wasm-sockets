@@ -2,13 +2,8 @@ use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 use crate as wasm_sockets;
-#[cfg(test)]
-use console_error_panic_hook;
-#[cfg(test)]
-use console_log;
 use log::{error, info, Level};
 use std::panic;
-use wasm_bindgen::JsValue;
 
 #[wasm_bindgen_test]
 fn event() {
@@ -32,7 +27,7 @@ fn event() {
         info!("Connection closed");
     })));
     client.set_on_message(Some(Box::new(
-        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
+        |_client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
             info!("New Message: {:#?}", message);
         },
     )));

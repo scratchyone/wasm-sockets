@@ -1,5 +1,5 @@
-use console_error_panic_hook;
-use console_log;
+
+
 use log::{error, info, Level};
 use std::panic;
 use wasm_sockets::{self, WebSocketError};
@@ -25,7 +25,7 @@ fn main() -> Result<(), WebSocketError> {
         info!("Connection closed");
     })));
     client.set_on_message(Some(Box::new(
-        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
+        |_client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
             info!("New Message: {:#?}", message);
         },
     )));

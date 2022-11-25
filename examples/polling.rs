@@ -1,4 +1,4 @@
-use console_error_panic_hook;
+
 use log::{info, Level};
 use std::cell::RefCell;
 use std::panic;
