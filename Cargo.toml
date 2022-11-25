@@ -1,6 +1,6 @@
 [package]
 name = "wasm-sockets"
-version = "0.3.0"
+version = "1.0.0"
 authors = ["scratchyone <scratchywon@gmail.com>"]
 edition = "2018"
 license = "MIT"
