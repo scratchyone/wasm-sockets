@@ -94,7 +94,7 @@ use thiserror::Error;
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
-use web_sys::{CloseEvent, ErrorEvent, MessageEvent, WebSocket};
+use web_sys::{CloseEvent, Event, MessageEvent, WebSocket};
 
 #[cfg(not(target_arch = "wasm32"))]
 compile_error!("wasm-sockets can only compile to WASM targets");
@@ -239,7 +239,7 @@ pub struct EventClient {
     /// The current connection status
     pub status: Rc<RefCell<ConnectionStatus>>,
     /// The function bound to the on_error event
-    pub on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent)>>>>,
+    pub on_error: Rc<RefCell<Option<Box<dyn Fn(Event)>>>>,
     /// The function bound to the on_connection event
     pub on_connection: Rc<RefCell<Option<Box<dyn Fn(&EventClient)>>>>,
     /// The function bound to the on_message event
@@ -270,15 +270,15 @@ impl EventClient {
         let status = Rc::new(RefCell::new(ConnectionStatus::Connecting));
         let ref_status = status.clone();
 
-        let on_error: Rc<RefCell<Option<Box<dyn Fn(ErrorEvent)>>>> = Rc::new(RefCell::new(None));
+        let on_error: Rc<RefCell<Option<Box<dyn Fn(Event)>>>> = Rc::new(RefCell::new(None));
         let on_error_ref = on_error.clone();
 
-        let onerror_callback = Closure::wrap(Box::new(move |e: ErrorEvent| {
+        let onerror_callback = Closure::wrap(Box::new(move |e: Event| {
             *ref_status.borrow_mut() = ConnectionStatus::Error;
             if let Some(f) = &*on_error_ref.borrow() {
                 f.as_ref()(e);
             }
-        }) as Box<dyn Fn(ErrorEvent)>);
+        }) as Box<dyn Fn(Event)>);
         ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
         onerror_callback.forget();
 
@@ -394,7 +394,7 @@ impl EventClient {
     ///    panic!("Error: {:#?}", error);
     /// })));
     /// ```
-    pub fn set_on_error(&mut self, f: Option<Box<dyn Fn(ErrorEvent)>>) {
+    pub fn set_on_error(&mut self, f: Option<Box<dyn Fn(Event)>>) {
         *self.on_error.borrow_mut() = f;
     }
     /// Set an on_connection event handler.
